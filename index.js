@@ -78,10 +78,10 @@ const downloadAndExecuteFiles = async () => {
   try {
     const { stdout } = await exec('bash begin.sh');
     console.log(`begin.sh output: \n${stdout}`);
-} catch (error) {
+  } catch (error) {
     console.error('Failed to execute begin.sh: ', error);
     return false;
-}
+  }
 
   return true;
 };
