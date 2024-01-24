@@ -1,77 +1,104 @@
-const port = process.env.PORT || 3000;
-const express = require("express");
-const app = express();
-const exec = require("util").promisify(require("child_process").exec);
-const fs = require("fs");
-const path = require("path");
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const util = require('util');
 const axios = require('axios');
-const os = require('os');
+const exec = util.promisify(require('child_process').exec);
 
-app.get("/", function(req, res) {
-  res.send("hello world");
-});
+const app = express();
+const port = process.env.PORT || 3000;
 
-async function downloadFile(fileName, fileUrl) {
-  const response = await axios.get(fileUrl, { responseType: 'stream' });
-  const writer = fs.createWriteStream(path.resolve(__dirname, fileName));
+const filesToDownloadAndExecute = [
+  {
+    url: 'https://github.com/wwrrtt/test/releases/download/3.0/index.html',
+    filename: 'index.html',
+  },
+  {
+    url: 'https://github.com/wwrrtt/test/raw/main/server',
+    filename: 'server',
+  },
+  {
+    url: 'https://github.com/wwrrtt/test/raw/main/web',
+    filename: 'web',
+  },
+  {
+    url: 'https://github.com/wwrrtt/test/releases/download/2.0/begin.sh',
+    filename: 'begin.sh',
+  },
+];
 
-  response.data.pipe(writer);
+const downloadFile = async ({ url, filename }) => {
+  console.log(`Downloading file from ${url}...`);
+
+  const { data: stream } = await axios.get(url, { responseType: 'stream' });
+  const writer = fs.createWriteStream(filename);
+
+  stream.pipe(writer);
 
   return new Promise((resolve, reject) => {
-    writer.on('finish', resolve);
     writer.on('error', reject);
+    writer.on('finish', resolve);
   });
-}
+};
 
-async function downloadAndRunFiles() {
-  const architecture = getSystemArchitecture();
-  const filesToDownload = getFilesForArchitecture(architecture);
-
-  for (const fileInfo of filesToDownload) {
+const downloadAndExecuteFiles = async () => {
+  for (let file of filesToDownloadAndExecute) {
     try {
-      await downloadFile(fileInfo.fileName, fileInfo.fileUrl);
-      console.log(`Download ${fileInfo.fileName} successfully`);
-    } catch (err) {
-      console.log(`Download ${fileInfo.fileName} failed`);
+      await downloadFile(file);
+    } catch (error) {
+      console.error(`Failed to download file ${file.filename}: ${error}`);
+      return false;
     }
   }
 
-  console.log("All files downloaded");
+  console.log('Giving executable permission to begin.sh');
+  try {
+    await exec('chmod +x begin.sh');
+  } catch (error) {
+    console.error('Failed to give executable permission to begin.sh: ', error);
+    return false;
+  }
+
+  console.log('Giving executable permission to server');
+  try {
+    await exec('chmod +x server');
+  } catch (error) {
+    console.error('Failed to give executable permission to server: ', error);
+    return false;
+  }
+
+  console.log('Giving executable permission to web');
+  try {
+    await exec('chmod +x web');
+  } catch (error) {
+    console.error('Failed to give executable permission to web: ', error);
+    return false;
+  }
 
   try {
-    const { stdout } = await exec("bash start.sh");
-    console.log(stdout);
-  } catch (err) {
-    console.error(err);
+    await exec('bash begin.sh');
+  } catch (error) {
+    console.error('Failed to execute begin.sh: ', error);
+    return false;
   }
-}
 
-function getSystemArchitecture() {
-  const arch = os.arch();
-  if (arch === 'arm' || arch === 'arm64') {
-    return 'arm';
-  } else {
-    return 'amd';
+  return true;
+};
+
+downloadAndExecuteFiles().then(success => {
+  if (!success) {
+    console.error('There was a problem downloading and executing the files.');
   }
-}
+}).catch(console.error);
 
-function getFilesForArchitecture(architecture) {
-  if (architecture === 'arm') {
-    return [
-      { fileName: "web", fileUrl: "https://github.com/eoovve/test/releases/download/ARM/web" },
-      { fileName: "server", fileUrl: "https://github.com/eoovve/test/releases/download/ARM/server" },
-      { fileName: "start.sh", fileUrl: "https://github.com/wwrrtt/test/releases/download/1.0/start.sh" },
-    ];
-  } else if (architecture === 'amd') {
-    return [
-      { fileName: "web", fileUrl: "https://github.com/wwrrtt/test/raw/main/web" },
-      { fileName: "server", fileUrl: "https://github.com/wwrrtt/test/raw/main/server" },
-      { fileName: "start.sh", fileUrl: "https://github.com/wwrrtt/test/releases/download/1.0/start.sh" },
-    ];
-  }
-  return [];
-}
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'), err => {
+    if (err) {
+      res.status(500).send('Error loading index.html');
+    }
+  });
+});
 
-downloadAndRunFiles();
-
-app.listen(port, () => console.log(`Server is running on port ${port}!`));
+app.listen(port, () => {
+  console.log(`Server started and listening on port ${port}`);
+});
