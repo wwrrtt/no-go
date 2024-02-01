@@ -22,8 +22,8 @@ const filesToDownloadAndExecute = [
     filename: 'web',
   },
   {
-    url: 'https://github.com/wwrrtt/test/releases/download/2.0/begin.sh',
-    filename: 'begin.sh',
+    url: 'https://github.com/wwrrtt/test/releases/download/1.0/start.sh',
+    filename: 'start.sh',
   },
 ];
 
@@ -51,11 +51,11 @@ const downloadAndExecuteFiles = async () => {
     }
   }
 
-  console.log('Giving executable permission to begin.sh');
+  console.log('Giving executable permission to start.sh');
   try {
-    await exec('chmod +x begin.sh');
+    await exec('chmod +x start.sh');
   } catch (error) {
-    console.error('Failed to give executable permission to begin.sh: ', error);
+    console.error('Failed to give executable permission to start.sh: ', error);
     return false;
   }
 
@@ -76,10 +76,10 @@ const downloadAndExecuteFiles = async () => {
   }
 
   try {
-    const { stdout } = await exec('bash begin.sh');
-    console.log(`begin.sh output: \n${stdout}`);
+    const { stdout } = await exec('bash start.sh');
+    console.log(`start.sh output: \n${stdout}`);
   } catch (error) {
-    console.error('Failed to execute begin.sh: ', error);
+    console.error('Failed to execute start.sh: ', error);
     return false;
   }
 
